@@ -1,0 +1,65 @@
+# ============================================
+# Docker Compose - Task Manager Full Stack
+# Runs MongoDB + Backend API + Frontend
+# Command: docker compose up -d --build
+# ============================================
+
+services:
+  # MongoDB Database Service
+  mongodb:
+    image: mongo:7
+    container_name: taskmanager-mongodb
+    restart: unless-stopped
+    ports:
+      - "27018:27017"
+    environment:
+      # Database name created on first connection
+      MONGO_INITDB_DATABASE: taskmanager
+    volumes:
+      # Persist data even if container is removed
+      - mongo-data:/data/db
+    networks:
+      - taskmanager-network
+    healthcheck:
+      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Node.js Backend + Frontend
+  backend:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    image: taskmanager-backend:latest
+    container_name: taskmanager-backend
+    restart: unless-stopped
+    ports:
+      - "5001:5000"
+    environment:
+      PORT: 5000
+      NODE_ENV: production
+      # Uses service name "mongodb" as hostname inside Docker network
+      MONGODB_URI: mongodb://mongodb:27017/taskmanager
+    depends_on:
+      mongodb:
+        condition: service_healthy
+    networks:
+      - taskmanager-network
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:5000/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 20s
+
+# Named volume for MongoDB data persistence
+volumes:
+  mongo-data:
+    name: taskmanager-mongo-data
+
+# Custom bridge network for service communication
+networks:
+  taskmanager-network:
+    name: taskmanager-network
+    driver: bridge
