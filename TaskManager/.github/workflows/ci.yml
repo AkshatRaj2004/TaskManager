@@ -22,15 +22,15 @@ jobs:
           node-version: "20"
 
       - name: Install dependencies
-        working-directory: backend
+        working-directory: TaskManager/backend
         run: npm install
 
       - name: Run build checks
-        working-directory: backend
+        working-directory: TaskManager/backend
         run: npm run check
 
       - name: Verify server syntax
-        working-directory: backend
+        working-directory: TaskManager/backend
         run: node --check src/server.js
 
       - name: Set up Docker Buildx
@@ -39,8 +39,8 @@ jobs:
       - name: Build Docker image
         uses: docker/build-push-action@v6
         with:
-          context: .
-          file: backend/Dockerfile
+          context: TaskManager/backend
+          file: TaskManager/backend/Dockerfile
           push: false
           tags: taskmanager-backend:ci-${{ github.sha }}
           load: true
