@@ -50,14 +50,14 @@ pipeline {
                 bat 'docker stop taskmanager-backend-stable & exit 0'
                 bat 'docker rm taskmanager-backend-stable & exit 0'
                 bat 'docker network create taskmanager-network & exit 0'
-                bat 'docker run -d --name taskmanager-backend-stable --network taskmanager-network -p 5001:5000 -e MONGO_URI=mongodb://taskmanager-mongodb:27017/taskmanager taskmanager-backend:%BUILD_NUMBER%'
+                bat 'docker run -d --name taskmanager-backend-stable --network taskmanager-network -p 5001:5000 -e MONGODB_URI=mongodb://taskmanager-mongodb:27017/taskmanager taskmanager-backend:%BUILD_NUMBER%'
             }
         }
 
         stage('Health Check') {
             steps {
                 echo 'Waiting for app to start...'
-                bat 'ping -n 15 127.0.0.1 > nul'
+                bat 'ping -n 20 127.0.0.1 > nul'
                 bat 'curl -f http://localhost:5001/health'
                 echo 'Health check PASSED!'
             }
