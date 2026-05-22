@@ -20,19 +20,18 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: "20"
-          cache: ""
 
       - name: Install dependencies
-        working-directory: TaskManager/backend
         run: npm install
+        working-directory: TaskManager/backend
 
       - name: Run build checks
-        working-directory: TaskManager/backend
         run: npm run check
+        working-directory: TaskManager/backend
 
       - name: Verify server syntax
-        working-directory: TaskManager/backend
         run: node --check src/server.js
+        working-directory: TaskManager/backend
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
