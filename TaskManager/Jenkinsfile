@@ -57,7 +57,7 @@ pipeline {
         stage('Health Check') {
             steps {
                 echo 'Waiting for app to start...'
-                bat 'timeout /t 10 /nobreak'
+                bat 'ping -n 15 127.0.0.1 > nul'
                 bat 'curl -f http://localhost:5001/health'
                 echo 'Health check PASSED!'
             }
