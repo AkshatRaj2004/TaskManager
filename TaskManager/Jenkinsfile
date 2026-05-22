@@ -45,9 +45,9 @@ pipeline {
         stage('Deploy Container') {
             steps {
                 echo 'Deploying container...'
-                bat 'docker stop taskmanager-backend-stable || echo not running'
-                bat 'docker rm taskmanager-backend-stable || echo not found'
-                bat 'docker network create taskmanager-network || echo network exists'
+                bat 'docker stop taskmanager-backend-stable & exit 0'
+                bat 'docker rm taskmanager-backend-stable & exit 0'
+                bat 'docker network create taskmanager-network & exit 0'
                 bat 'docker run -d --name taskmanager-backend-stable --network taskmanager-network -p 5000:5000 -e MONGO_URI=mongodb://taskmanager-mongodb:27017/taskmanager taskmanager-backend:%BUILD_NUMBER%'
             }
         }
@@ -68,7 +68,7 @@ pipeline {
         }
         failure {
             echo 'Pipeline failed!'
-            bat 'docker stop taskmanager-backend-stable || echo nothing to stop'
+            bat 'docker stop taskmanager-backend-stable & exit 0'
         }
     }
 }
