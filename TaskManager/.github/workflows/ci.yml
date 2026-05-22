@@ -20,6 +20,7 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: "20"
+          cache: ""
 
       - name: Install dependencies
         working-directory: TaskManager/backend
@@ -37,13 +38,7 @@ jobs:
         uses: docker/setup-buildx-action@v3
 
       - name: Build Docker image
-        uses: docker/build-push-action@v6
-        with:
-          context: TaskManager/backend
-          file: TaskManager/backend/Dockerfile
-          push: false
-          tags: taskmanager-backend:ci-${{ github.sha }}
-          load: true
+        run: docker build -t taskmanager-backend:ci-${{ github.sha }} TaskManager/backend
 
       - name: CI Success
         run: echo "CI pipeline completed successfully!"
