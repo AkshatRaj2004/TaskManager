@@ -10,14 +10,14 @@ pipeline {
     stages {
         stage('Pull Code') {
             steps {
-                echo 'Pulling latest code from repository...'
+                echo 'Pulling latest code...'
                 checkout scm
             }
         }
 
         stage('Install Dependencies') {
             steps {
-                echo 'Installing backend npm packages...'
+                echo 'Installing npm packages...'
                 dir('TaskManager/backend') {
                     bat 'npm install'
                 }
@@ -26,7 +26,7 @@ pipeline {
 
         stage('Run Checks') {
             steps {
-                echo 'Running project structure checks...'
+                echo 'Running syntax check...'
                 dir('TaskManager/backend') {
                     bat 'node --check src/server.js'
                 }
@@ -35,9 +35,9 @@ pipeline {
 
         stage('Build Docker Image') {
             steps {
-                echo "Building Docker image: ${IMAGE_NAME}:${BUILD_NUMBER}"
-                dir('TaskManager') {
-                    bat "docker build -t ${IMAGE_NAME}:${BUILD_NUMBER} -f backend/Dockerfile ./backend"
+                echo 'Building Docker image...'
+                dir('TaskManager/backend') {
+                    bat "docker build -t taskmanager-backend:%BUILD_NUMBER% ."
                 }
             }
         }
@@ -45,3 +45,30 @@ pipeline {
         stage('Deploy Container') {
             steps {
                 echo 'Deploying container...'
+                bat 'docker stop taskmanager-backend-stable || echo not running'
+                bat 'docker rm taskmanager-backend-stable || echo not found'
+                bat 'docker network create taskmanager-network || echo network exists'
+                bat 'docker run -d --name taskmanager-backend-stable --network taskmanager-network -p 5000:5000 -e MONGO_URI=mongodb://taskmanager-mongodb:27017/taskmanager taskmanager-backend:%BUILD_NUMBER%'
+            }
+        }
+
+        stage('Health Check') {
+            steps {
+                echo 'Waiting for app to start...'
+                bat 'timeout /t 10 /nobreak'
+                bat 'curl -f http://localhost:5000/health'
+                echo 'Health check PASSED!'
+            }
+        }
+    }
+
+    post {
+        success {
+            echo 'Pipeline completed successfully!'
+        }
+        failure {
+            echo 'Pipeline failed!'
+            bat 'docker stop taskmanager-backend-stable || echo nothing to stop'
+        }
+    }
+}
