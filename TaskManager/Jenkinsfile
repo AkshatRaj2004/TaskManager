@@ -1,29 +1,13 @@
-// ============================================
-// Jenkins Pipeline - Continuous Deployment (CD)
-// Task Manager App with AUTO ROLLBACK
-//
-// VIVA FLOW:
-// Developer pushes code -> GitHub Actions (CI) runs tests & builds image
-// Jenkins (CD) pulls code, builds Docker image, deploys, health checks
-// If /health fails -> deploy.sh rolls back to previous stable container
-// ============================================
-
 pipeline {
     agent any
 
     environment {
-        // Docker image settings
-        IMAGE_NAME = 'taskmanager-backend'
-        IMAGE_TAG = "${env.BUILD_NUMBER}"
-        APP_NAME = 'taskmanager-backend'
-        HEALTH_URL = 'http://localhost:5000/health'
-        NETWORK_NAME = 'taskmanager-network'
-        MONGODB_URI = 'mongodb://taskmanager-mongodb:27017/taskmanager'
+        IMAGE_NAME = "taskmanager-backend"
+        CONTAINER_NAME = "taskmanager-backend-stable"
+        PORT = "5000"
     }
 
     stages {
-
-        // -------- Stage 1: Pull latest code from Git --------
         stage('Pull Code') {
             steps {
                 echo 'Pulling latest code from repository...'
@@ -31,99 +15,33 @@ pipeline {
             }
         }
 
-        // -------- Stage 2: Install Node.js dependencies --------
         stage('Install Dependencies') {
             steps {
                 echo 'Installing backend npm packages...'
-                dir('backend') {
-                    sh 'npm install'
+                dir('TaskManager/backend') {
+                    bat 'npm install'
                 }
             }
         }
 
-        // -------- Stage 3: Run CI checks before Docker build --------
         stage('Run Checks') {
             steps {
                 echo 'Running project structure checks...'
-                dir('backend') {
-                    sh 'npm run check'
-                    sh 'node --check src/server.js'
+                dir('TaskManager/backend') {
+                    bat 'node --check src/server.js'
                 }
             }
         }
 
-        // -------- Stage 4: Build Docker image with build number tag --------
         stage('Build Docker Image') {
             steps {
-                echo "Building Docker image: ${IMAGE_NAME}:${IMAGE_TAG}"
-                sh """
-                    docker build -f backend/Dockerfile -t ${IMAGE_NAME}:${IMAGE_TAG} .
-                    docker tag ${IMAGE_NAME}:${IMAGE_TAG} ${IMAGE_NAME}:latest
-                """
-            }
-        }
-
-        // -------- Stage 5: Deploy container (includes rollback logic) --------
-        stage('Deploy Container') {
-            steps {
-                echo 'Deploying new container via deploy.sh...'
-                echo 'Rollback is handled inside deploy.sh if health check fails during deploy'
-                sh """
-                    chmod +x scripts/deploy.sh scripts/health-check.sh
-                    export IMAGE_NAME=${IMAGE_NAME}
-                    export IMAGE_TAG=${IMAGE_TAG}
-                    export HEALTH_URL=${HEALTH_URL}
-                    export APP_NAME=${APP_NAME}
-                    export NETWORK_NAME=${NETWORK_NAME}
-                    export MONGODB_URI=${MONGODB_URI}
-                    ./scripts/deploy.sh
-                """
-            }
-        }
-
-        // -------- Stage 6: Verify health after deployment --------
-        stage('Health Check') {
-            steps {
-                echo 'Verifying GET /health returns OK...'
-                sh """
-                    chmod +x scripts/health-check.sh
-                    export HEALTH_URL=${HEALTH_URL}
-                    ./scripts/health-check.sh
-                """
-            }
-        }
-    }
-
-    post {
-        success {
-            echo 'Pipeline SUCCESS - Application is healthy and running'
-        }
-
-        // -------- AUTO ROLLBACK on pipeline failure --------
-        // Note: deploy.sh already rolls back if health fails during deploy.
-        // This post block handles failures in later stages or unexpected errors.
-        failure {
-            echo 'Pipeline FAILED - Attempting additional rollback safety net...'
-            script {
-                try {
-                    sh '''
-                        # If stable container exists, ensure it is running
-                        if docker ps -a --format '{{.Names}}' | grep -q 'taskmanager-backend-stable'; then
-                            echo "Ensuring stable container is running..."
-                            docker start taskmanager-backend-stable 2>/dev/null || true
-                        fi
-                        # Remove any failed new deployment container
-                        docker rm -f taskmanager-backend-new 2>/dev/null || true
-                        echo "Rollback safety net completed"
-                    '''
-                } catch (Exception e) {
-                    echo "Rollback safety net error: ${e.message}"
+                echo "Building Docker image: ${IMAGE_NAME}:${BUILD_NUMBER}"
+                dir('TaskManager') {
+                    bat "docker build -t ${IMAGE_NAME}:${BUILD_NUMBER} -f backend/Dockerfile ./backend"
                 }
             }
         }
 
-        always {
-            echo "Build #${env.BUILD_NUMBER} finished with status: ${currentBuild.currentResult}"
-        }
-    }
-}
+        stage('Deploy Container') {
+            steps {
+                echo 'Deploying container...'
